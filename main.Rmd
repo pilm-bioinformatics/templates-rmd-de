@@ -1,0 +1,380 @@
+---
+title: "Differential Expression for multiple contrasts"
+author: "Lorena Pantano"
+date: "`r Sys.Date()`"
+output:
+    html_document:
+        code_folding: hide
+        df_print: paged
+        highlight: pygments
+        number_sections: false
+        self_contained: true
+        theme: paper
+        toc: true
+        toc_float:
+            collapsed: true
+            smooth_scroll: false
+params:
+    se_file: "../data/se.rds"
+    design: "~ type + condition"
+    contrast: !r list(c("condition", "treated", "untreated"))
+    metadata: !r c("condition", "type") # first one used in some plots
+    alpha: 0.05
+    lfc: 0
+    output_dir: "."
+    cache_dir: "../cache"
+    cache_on: FALSE
+---
+
+# set up
+
+## Parent folder
+
+```{r}
+message(getwd())
+```
+
+## Check params
+
+```{r}
+# add check function
+```
+
+## Load data
+
+```{r knitr-setup}
+# Set seed for reproducibility
+set.seed(1454944673)
+library(knitr)
+library(ggplot2)
+
+opts_chunk[["set"]](
+    autodep = TRUE,
+    bootstrap.show.code = FALSE,
+    cache = params$cache_on,
+    cache.lazy = params$cache_on,
+    cache.path = params$cache_dir,
+    dev = c("png", "pdf"),
+    error = TRUE,
+    fig.height = 10,
+    fig.retina = 2,
+    fig.width = 10,
+    highlight = TRUE,
+    message = FALSE,
+    prompt = TRUE,
+    # formatR required for tidy code
+    tidy = TRUE,
+    warning = FALSE)
+
+theme_set(
+    theme_light(base_size = 14))
+theme_update(
+    legend.justification = "center",
+    legend.position = "bottom")
+
+```
+
+```{r setup, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(SummarizedExperiment)
+library(DEGreport)
+library(pheatmap)
+library(tidyverse)
+library(readr)
+# Load bcbioRNASeq object
+se = readRDS(params$se_file)
+
+lfc = params$lfc
+alpha = params$alpha
+# Directory paths
+output_dir <- params$output_dir
+dataDir <- file.path(params$output_dir, "data")
+dir.create(dataDir, showWarnings = FALSE, recursive = TRUE)
+countsDir <- file.path(output_dir, "results", "counts")
+dir.create(countsDir, showWarnings = FALSE, recursive = TRUE)
+deDir <- file.path(output_dir, "results", "differential_expression")
+dir.create(deDir, showWarnings = FALSE, recursive = TRUE)
+```
+
+
+```{r dds, results="hide", eval=!file.exists(file.path(dataDir, "dds.rda"))}
+# help("design", "DESeq2")
+dds <- DESeqDataSetFromMatrix(
+    countData = round(assay(se)),
+    colData = colData(se),
+    design = formula(params$design)) %>%
+    DESeq()
+rld <- varianceStabilizingTransformation(dds)
+save(dds, rld, file = file.path(dataDir, "dds.rda"))
+```
+
+```{r, results="hide"}
+load(file.path(dataDir, "dds.rda"))
+```
+
+
+```{r write-counts}
+as.data.frame(assay(se)) %>% 
+    rownames_to_column("gene_id") %>% 
+    left_join(as.data.frame(rowData(se)), by ="gene_id") %>% 
+    write_csv(file.path(countsDir, "raw.csv.gz"))
+
+as.data.frame(assay(rld)) %>% 
+    rownames_to_column("gene_id") %>% 
+    left_join(as.data.frame(rowData(se)), by ="gene_id") %>% 
+    write_csv(file.path(countsDir, "log2_normalized.csv.gz"))
+```
+
+# Quality metrics
+
+Full qualialyt metrics can be found at [multiqc_report.html].
+
+## Number of genes
+
+We calculate the number of genes with counts > 0 in each sample.
+
+```{r numner-genes}
+data.frame(samples=colnames(se), num_genes=colSums(assay(se)>0)) %>% 
+    ggplot(aes(samples, num_genes)) +
+    geom_bar(stat = "identity") +
+    coord_flip()
+```
+
+# PCA
+
+Principal component analysis is a technique to reduce the dimensionality of the data to allow visualization in two dimensions [PCA][]. It takes all the gene abundances for the samples and
+creates a series of principal components (PCs) to explain the
+variability in the data. We normally plot the first two PCs for
+simplicity.
+
+```{r general-pca, fig.width=6, fig.height=6}
+assays(se)[["vst"]] = assay(rld)
+
+degPCA(assays(se)[["vst"]], colData(se), condition = params$metadata[1]) 
+# +  ggrepel::geom_text_repel(aes(label=names)) if you wish to add sample names
+```
+
+
+# Results
+
+```{r res, eval=!file.exists(file.path(dataDir, "comparisons.rda"))}
+# ?degComps: Read how to get the different contrasts
+# for coefficients from one column: degComps(dds, combs = column_name)
+# for all possible paris: degComps(dds, combs = column_name, pairs = TRUE)
+# for specific contrasts: degComps(dds, contrasts = list(c(column_name, group1, group2),
+#                                                        c(column_name, group1, group3)))
+
+comparisons = degComps(dds, contrast = params$contrast,
+                       type = "ashr")
+
+save(comparisons, file = file.path(dataDir, "comparisons.rda"))
+```
+
+```{r load, results="hide"}
+lapply(file.path(dataDir, c("dds.rda", "comparisons.rda")), load, environment()) %>% invisible()
+```
+
+We performed the analysis using a BH adjusted *P* value cutoff of `r params$alpha` and a log fold-change (LFC) ratio cutoff of `r params$lfc`.
+
+## Alpha level (FDR) cutoffs {.tabset}
+
+Let's take a look at the number of genes we get with different false discovery rate (FDR) cutoffs. These tests subset *P* values that have been multiple test corrected using the Benjamini Hochberg (BH) method [@Benjamini:1995ws].
+
+```{r alpha_summary, results="asis"}
+lapply(names(comparisons), function(x){
+    cat("### ", x, "\n")
+    degSummary(comparisons[[x]], kable = TRUE) %>%  show
+    cat("\n\n")
+}) %>%  invisible()
+```
+
+
+# Plots
+
+## Mean average (MA) {.tabset}
+
+An MA plot compares transformed counts on `M` (log ratio) and `A` (mean average) scales [@Yang:2002ty].
+Blue arrows represent a correction of the log2 Fold Change values due to variability. Normally this happens when the gene shows high variation and the
+log2FC is not accurate, here the model tries to estimate them. See this paper for more information:
+
+Love, M.I., Huber, W., Anders, S. (2014) Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome Biology, 15:550. https://doi.org/10.1186/s13059-014-0550-8
+
+```{r plot_ma, results="asis"}
+lapply(names(comparisons), function(x){
+    cat("### ", x, "\n")
+    print(degMA(comparisons[[x]], limit = 5))
+    cat("\n\n")
+}) %>%  invisible()
+```
+
+
+## Volcano {.tabset}
+
+A volcano plot compares significance (BH-adjusted *P* value) against fold change (log2) [@Cui:2003kh; @Li:2014fv]. Genes in the green box with text labels have an adjusted *P* value are likely to be the top candidate genes of interest.
+
+```{r plot_volcano, results="asis"}
+lapply(names(comparisons), function(x){
+    cat("### ", x, "\n")
+    print(degVolcano(comparisons[[x]]))
+    cat("\n\n")
+}) %>%  invisible()
+```
+
+
+## Heatmap {.tabset}
+
+This plot shows only differentially expressed genes on a per-sample basis. We have scaled the data by row and used the `ward.D2` method for clustering [@WardJr:1963eu].
+
+```{r plot_heatmap, results="asis"}
+# lapply(names(comparisons), function(x){
+for (x in names(comparisons)){ 
+    cat("### ", x, "\n")
+    s = significants(comparisons[[x]])
+    if (length(s) < 2){
+        cat("Less than two genes, no possible to plot")
+    }else{
+        p=pheatmap(assays(se)[["vst"]][s,], scale = "row",
+                 annotation_col = as.data.frame(colData(se)[,params$metadata, drop=F]),
+                 show_rownames = FALSE, show_colnames = FALSE, clustering_method = "ward.D2",
+                 clustering_distance_cols = "correlation")
+        print(p)
+    }
+    cat("\n\n")
+}
+```
+
+## PCA {.tabset}
+
+Principal component analysis is a technique to reduce the dimensionality of the data to allow visualization in two dimensions [PCA][]. It takes all the gene abundances for the samples and
+creates a series of principal components (PCs) to explain the
+variability in the data. We normally plot the first two PCs for
+simplicity.
+
+```{r plot_pca, results="asis"}
+lapply(names(comparisons), function(x){
+    cat("### ", x, "\n")
+    s = significants(comparisons[[x]])
+    if (length(s) < 2){
+        cat("Less than two genes, no possible to plot")
+    }else{
+        degPCA(assays(se)[["vst"]][s,],
+               colData(se), condition = params$metadata[1]) %>% print
+        cat("\n\n")
+    }
+}) %>%  invisible()
+```
+
+## Gene Expression Patterns
+
+In general, it is useful to cluster the significant genes together in similar patterns across samples. `degPatterns` uses standard expression correlation technique to generate a similarity matrix that can be clustered hierarchically and then split into groups of genes that follow similar expression patterns [degPtterns][].
+
+We defined significance as genes with abs(log2FC) >  `r cat(lfc)` and FDR < `r cat(alpha)`.
+
+```{r patterns}
+# choose the significants genes. 
+# In this case the first is used. `sig` should be a character vector with genes.
+sig = significants(comparisons, fc = params$lfc, padj = params$alpha)
+pattern = degPatterns(assays(se)[["vst"]][sig,],
+                      colData(se), time = params$metadata[1])
+```
+
+## Top genes {.tabset}
+
+```{r results_tables, results="asis"}
+resTbl = lapply(names(comparisons), function(x){
+    cat("### ", x, "\n")
+    p = degPlot(se, genes = significants(comparisons[[x]])[1:15],
+            xs = params$metadata[1],
+            slot = "vst", log2 = FALSE,
+            ann = c("gene_id", "gene_name")) +
+        geom_boxplot(alpha = 0.3) +
+        theme(axis.text.x = element_text(angle=45, hjust = 0.5, vjust = 0.5))
+    print(p)
+    cat("\n\n")
+    res = deg(comparisons[[x]], tidy = "tibble") %>% 
+        left_join(rowData(se) %>% as.data.frame, by = c("gene" = "gene_id")) %>% 
+        left_join(pattern[["df"]], by = c("gene" = "genes"))
+   dir.create(file.path(deDir, x), showWarnings = FALSE, recursive = TRUE)
+   write_csv(res, file.path(deDir, x, paste0(x, ".csv.gz")))
+    res
+})
+names(resTbl) = names(comparisons)
+```
+
+
+## Top tables {.tabset}
+
+Top 10 genes are shown order by False Discovery Rate. Genes below 0.05 are 
+considered significant.
+
+```{r top_tables, results="asis"}
+lapply(names(resTbl), function(x){
+    cat("### ", x, "\n")
+    head(resTbl[[x]], 10) %>% kable %>% show
+    cat("\n\n")
+}) %>%  invisible()
+```
+
+
+# File downloads
+
+The results are saved as gzip-compressed comma separated values (CSV). Gzip compression is natively supported on [macOS][] and Linux-based operating systems. If you're running Windows, we recommend installing [7-Zip][]. CSV files can be opened in [Excel][] or [RStudio][].
+
+
+## Count matrices
+
+Tables are under `r file.path(countsDir)` folder:
+
+- [`normalizedCounts.csv.gz`](`r file.path(countsDir, "normalizedCounts.csv.gz")`): Use to evaluate individual genes and/or generate plots. These counts are normalized for the variation in sequencing depth across samples.
+- [`tpm.csv.gz`](`r file.path(countsDir, "tpm.csv.gz")`): Transcripts per million, scaled by length and also suitable for plotting.
+- [`rawCounts.csv.gz`](`r file.path(countsDir, "rawCounts.csv.gz")`): Only use to perform a new differential expression analysis. These counts will vary across samples due to differences in sequencing depth, and have not been normalized. Do not use this file for plotting genes.
+
+## Differential expression tables
+
+Tables are under `r file.path(deDir)` folder:
+
+DEG tables are sorted by BH-adjusted P value, and contain the following columns:
+
+- `ensgene`: [Ensembl][] gene identifier.
+- `baseMean`: Mean of the normalized counts per gene for all samples.
+- `log2FoldChange`: log2 fold change.
+- `lfcSE`: log2 standard error.
+- `stat`: Wald statistic.
+- `pvalue`: Walt test *P* value.
+- `padj`: BH adjusted Wald test *P* value (corrected for multiple comparisons; aka FDR).
+- `externalGeneName`: [Ensembl][] name (a.k.a. symbol).
+- `description`: [Ensembl][] description.
+- `geneBiotype`: [Ensembl][] biotype (e.g. `protein_coding`).
+
+
+# Methods
+
+RNA-seq counts were generated by [bcbio][] using [salmon][] [@salmon]. Counts were imported into [R][] using [tximport][] [@tximport] and [DESeq2] [@DESeq2]. Gene annotations were obtained from [Ensembl][]. Plots were generated by [ggplot2][] [@ggplot2]. Heatmaps were generated by [pheatmap][] [@pheatmap].
+
+
+
+# R session information {.tabset}
+
+```{r session_info}
+devtools::session_info()
+print(params)
+```
+
+
+
+[bcbio]: https://github.com/chapmanb/bcbio-nextgen
+[Bioconductor]: https://bioconductor.org
+[DESeq2]: https://bioconductor.org/packages/release/bioc/html/DESeq2.html
+[Ensembl]: http://useast.ensembl.org
+[Excel]: https://products.office.com/en-us/excel
+[ggplot2]: http://ggplot2.org
+[macOS]: https://www.apple.com/macos
+[pheatmap]: https://cran.r-project.org/web/packages/pheatmap/index.html
+[R]: https://www.r-project.org
+[RStudio]: https://www.rstudio.com
+[salmon]: https://combine-lab.github.io/salmon
+[tximport]: https://bioconductor.org/packages/release/bioc/html/tximport.html
+[7-Zip]: http://www.7-zip.org
+[PCA]: https://en.wikipedia.org/wiki/Principal_component_analysis
+[degPattern]: https://lpantano.github.io/DEGpattern
