@@ -38,6 +38,10 @@ message(getwd())
 
 ```{r}
 # add check function
+stopifnot(file.exists(params$se_file))
+
+se = readRDS(params$se_file)
+stopifnot(class(se) == "SummarizedExperiment")
 ```
 
 ## Load data
@@ -83,7 +87,6 @@ library(pheatmap)
 library(tidyverse)
 library(readr)
 # Load bcbioRNASeq object
-se = readRDS(params$se_file)
 
 lfc = params$lfc
 alpha = params$alpha

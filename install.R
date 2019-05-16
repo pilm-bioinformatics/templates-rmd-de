@@ -4,7 +4,10 @@ pkgs <- c(
     "SummarizedExperiment",
     "DEGreport",
     "pheatmap",
-    "tidyverse"
+    "tidyverse",
+    "rmarkdown",
+    "knitr",
+    "devtools"
 )
 
 

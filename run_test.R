@@ -1,3 +1,4 @@
+dir.create("test")
 rmarkdown::render("main.Rmd",
       params = list(se_file = "data/se.rds",
                     output_dir = "test",
