@@ -15,7 +15,7 @@ output:
             collapsed: true
             smooth_scroll: false
 params:
-    se_file: "../data/se.rds"
+    se_file: "data/se.rds"
     design: "~ type + condition"
     contrast: !r list(c("condition", "treated", "untreated"))
     metadata: !r c("condition", "type") # first one used in some plots
@@ -37,11 +37,17 @@ message(getwd())
 ## Check params
 
 ```{r}
+library(SummarizedExperiment)
+
 # add check function
 stopifnot(file.exists(params$se_file))
+stopifnot(file.exists(params$output_dir))
 
 se = readRDS(params$se_file)
 stopifnot(class(se) == "SummarizedExperiment")
+
+stopifnot(sum(params$metadata %in% colnames(colData(se))) == length(params$metadata))
+
 ```
 
 ## Load data
@@ -81,7 +87,6 @@ theme_update(
 ```{r setup, message=FALSE}
 library(DESeq2)
 library(ggplot2)
-library(SummarizedExperiment)
 library(DEGreport)
 library(pheatmap)
 library(tidyverse)

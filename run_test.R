@@ -6,3 +6,5 @@ rmarkdown::render("main.Rmd",
                                     c("type", "paired-end", "single-read"))),
       output_dir = "test",
       output_file = "de.html")
+
+

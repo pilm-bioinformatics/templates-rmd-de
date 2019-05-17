@@ -1,7 +1,5 @@
 pkgs <- c(
     "DESeq2",
-    "ggplot2",
-    "SummarizedExperiment",
     "DEGreport",
     "pheatmap",
     "tidyverse",

@@ -1,0 +1,10 @@
+params:
+    se_file: "data/se.rds"
+    design: "~ type + condition"
+    contrast: !r list(c("condition", "treated", "untreated"))
+    metadata: !r c("condition", "type") # first one used in some plots
+    alpha: 0.05
+    lfc: 0
+    output_dir: "."
+    cache_dir: "../cache"
+    cache_on: FALSE
