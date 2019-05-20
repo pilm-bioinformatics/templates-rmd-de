@@ -13,7 +13,7 @@ pkgs <- c(
 ap.db <- available.packages(contrib.url(BiocManager::repositories()))
 ap <- rownames(ap.db)
 fnd <- pkgs %in% ap
-pkgs_to_install <- pkgs[fnd]
+pkgs_to_install <- pkgs
 
 ok <- BiocManager::install(pkgs_to_install, update=FALSE, ask=FALSE) %in% rownames(installed.packages())
 
