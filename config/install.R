@@ -5,7 +5,8 @@ pkgs <- c(
     "tidyverse",
     "rmarkdown",
     "knitr",
-    "devtools"
+    "devtools",
+    "pilm-bioinformatics/rmdCore"
 )
 
 

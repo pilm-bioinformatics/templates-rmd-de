@@ -41,7 +41,6 @@ library(SummarizedExperiment)
 
 # add check function
 stopifnot(file.exists(params$se_file))
-stopifnot(file.exists(params$output_dir))
 
 se = readRDS(params$se_file)
 stopifnot(class(se) == "SummarizedExperiment")
