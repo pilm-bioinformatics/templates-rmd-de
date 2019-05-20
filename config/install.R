@@ -22,7 +22,7 @@ if (!all(fnd))
     message("Packages not found in a valid repository (skipped):\n  ",
             paste(pkgs[!fnd], collapse="  \n  "))
 if (!all(ok))
-    stop("Failed to install:\n  ",
+    message("Failed to install:\n  ",
          paste(pkgs_to_install[!ok], collapse="  \n  "))
 
-suppressWarnings(BiocManager::install(update=TRUE, ask=FALSE))
+# suppressWarnings(BiocManager::install(update=TRUE, ask=FALSE))

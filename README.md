@@ -4,6 +4,8 @@ Differential expression analysis template
 
 [![Docker](https://img.shields.io/docker/automated/lpantano/templates-rmd-de.svg)](https://hub.docker.com/r/lpantano/templates-rmd-de/)
 
+[![example](https://img.shields.io/badge/report-example-green.svg)](https://pilm-bioinformatics.github.io/templates-rmd-de/de.html)
+
 # Quick start
 
         
@@ -20,11 +22,10 @@ run_template("pilm-bioinformatics/templates-rmd-de",
                             output_dir = "test",
                             contrast = list(c("condition", "treated", "untreated"),
                                     c("type", "paired-end", "single-read"))),
-              output_dir = "test",
-              output_file = "de.html")
+              output_file = "test/de.html")
 ```
 
-## Run with rmarkdown
+### Run with manually
 
 Download the repository and get inside:
 
@@ -38,14 +39,23 @@ Download the repository and get inside:
                     output_dir = "test",
                     contrast = list(c("condition", "treated", "untreated"),
                                     c("type", "paired-end", "single-read"))),
-      output_dir = "test",
-      output_file = "de.html")
+      output_file = "test/de.html")
 
 Modify parameters to match your data.
+
+### Run with rmdCore
+    
+    devtools::install_github("pilm-bioinformatics/rmdCore")
+    rmdCore::run_template(".", NULL, output_file = "docs/de.html")
+    
+If you want only to get a copy of a template run:
+  
+    rmdCore::run_template("pilm-bioiformatics/templates-rmd-de")
 
 ### Run with docker
 
     docker run -v `pwd`:/mnt/analysis -ti --user bioc \
-        pilm-bioinformatics/templates-rmd-de R 
+        pilm-bioinformatics/templates-rmd-de R \
+        rmdCore::run_template(".", NULL, output_file = "docs/de.html")
  
  And use any of the previous commands.
