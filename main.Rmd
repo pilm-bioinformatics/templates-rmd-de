@@ -41,10 +41,11 @@ library(SummarizedExperiment)
 library(stringr)
 
 # add check function
-stopifnot(file.exists(params$se_file))
+if(!file.exists(params$se_file))
+    stop("se_file isn't found: ", params$se_file)
 
 se = readRDS(params$se_file)
-stopifnot(class(se) == "SummarizedExperiment")
+stopifnot(class(se) == "SummarizedExperiment" | class(se) == "RangedSummarizedExperiment")
 
 stopifnot(sum(params$metadata %in% colnames(colData(se))) == length(params$metadata))
 
@@ -53,11 +54,12 @@ contrasts = lapply(comparisons, function(c){
     m = str_match(c, "(.+)\\.(.+)_vs_(.+)") %>% 
         as.vector()
     if( ! m[2] %in% colnames(colData(se)))
-        stop("column not in colnames: ", m[2] )
+        stop("column ", m[2],"not in colnames: ", colnames(colData(se)) )
+    values = unique(colData(se)[[m[2]]])
     if(! m[3] %in% colData(se)[[m[2]]])
-        stop("value ", m[3], "not in colnames: ",m[2])
+        stop("value ", m[3], "not in column values: ", values)
     if(! m[4] %in% colData(se)[[m[2]]])
-        stop("value ", m[4], "not in colnames: ",m[2])
+        stop("value ", m[4], "not in column values: ", values)
     c(m[2], m[3], m[4])
 })
 ```

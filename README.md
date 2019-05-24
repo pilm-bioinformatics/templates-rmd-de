@@ -11,6 +11,13 @@ Differential expression analysis template
         
 ## Run with rmdCore
 
+    
+If you want only to get a copy of a template run:
+  
+    rmdCore::run_template("pilm-bioiformatics/templates-rmd-de", ".")
+
+Example run with all paramters:
+
 ```r
 install.packages("devtools")
 devtools::install_github("pilm-bioinformatics/rmdCore")
@@ -21,8 +28,17 @@ run_template("pilm-bioinformatics/templates-rmd-de",
              options = list(se_file = "se.rds",
                             output_dir = "test",
                             contrast = "condition.treated_vs_untreated, type.paired-end_vs_single-read",
+                            metadata = c("condition", "type")
+                            ),
               output_file = "test/de.html")
 ```
+
+Run example data:
+    
+    rmdCore::run_template("pilm-bioiformatics/templates-rmd-de", ".")
+    setwd("templates-rmd-de")
+    rmdCore::run_template(".", NULL, output_file = "docs/de.html")
+
 
 ### Run with manually
 
@@ -40,19 +56,12 @@ Download the repository and get inside:
 
 Modify parameters to match your data.
 
-### Run with rmdCore
-    
-    devtools::install_github("pilm-bioinformatics/rmdCore")
-    rmdCore::run_template(".", NULL, output_file = "docs/de.html")
-    
-If you want only to get a copy of a template run:
-  
-    rmdCore::run_template("pilm-bioiformatics/templates-rmd-de")
 
 ### Run with docker
 
-    docker run -v `pwd`:/mnt/analysis -ti --user bioc \
-        pilm-bioinformatics/templates-rmd-de R \
-        rmdCore::run_template(".", NULL, output_file = "docs/de.html")
+    docker run --rm -v `pwd`:/mnt/analysis --user bioc \
+        -w /mnt/analysis \
+        lpantano/templates-rmd-de Rscript -e  \
+        'rmdCore::run_template(".", NULL, output_file = "docs/de.html")'
  
  And use any of the previous commands.
