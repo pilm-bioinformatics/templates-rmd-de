@@ -6,4 +6,5 @@ before_install:
 - docker pull lpantano/templates-rmd-de
 
 script:
+- mkdir -p test/data
 - docker run --rm -v `pwd`:/mnt/analysis --user bioc -w /mnt/analysis lpantano/templates-rmd-de Rscript -e 'rmdCore::run_template(".", NULL, output_file = "test/de.html")'
