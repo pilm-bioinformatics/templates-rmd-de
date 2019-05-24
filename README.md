@@ -20,8 +20,7 @@ run_template("pilm-bioinformatics/templates-rmd-de",
              "working_dir",
              options = list(se_file = "se.rds",
                             output_dir = "test",
-                            contrast = list(c("condition", "treated", "untreated"),
-                                    c("type", "paired-end", "single-read"))),
+                            contrast = "condition.treated_vs_untreated, type.paired-end_vs_single-read",
               output_file = "test/de.html")
 ```
 
@@ -33,12 +32,10 @@ Download the repository and get inside:
   
 ### Run insde R:
 
-    dir.create("test")
     rmarkdown::render("main.Rmd",
       params = list(se_file = "data/se.rds",
                     output_dir = "test",
-                    contrast = list(c("condition", "treated", "untreated"),
-                                    c("type", "paired-end", "single-read"))),
+                    contrast = "condition.treated_vs_untreated, type.paired-end_vs_single-read",
       output_file = "test/de.html")
 
 Modify parameters to match your data.

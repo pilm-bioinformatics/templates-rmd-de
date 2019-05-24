@@ -17,7 +17,7 @@ output:
 params:
     se_file: "data/se.rds"
     design: "~ type + condition"
-    contrast: !r list(c("condition", "treated", "untreated"))
+    contrast: "condition.treated_vs_untreated,type.paired-end_vs_single-read"
     metadata: !r c("condition", "type") # first one used in some plots
     alpha: 0.05
     lfc: 0
@@ -38,6 +38,7 @@ message(getwd())
 
 ```{r}
 library(SummarizedExperiment)
+library(stringr)
 
 # add check function
 stopifnot(file.exists(params$se_file))
@@ -47,6 +48,18 @@ stopifnot(class(se) == "SummarizedExperiment")
 
 stopifnot(sum(params$metadata %in% colnames(colData(se))) == length(params$metadata))
 
+comparisons = str_split(params$contrast, ",")[[1]]
+contrasts = lapply(comparisons, function(c){
+    m = str_match(c, "(.+)\\.(.+)_vs_(.+)") %>% 
+        as.vector()
+    if( ! m[2] %in% colnames(colData(se)))
+        stop("column not in colnames: ", m[2] )
+    if(! m[3] %in% colData(se)[[m[2]]])
+        stop("value ", m[3], "not in colnames: ",m[2])
+    if(! m[4] %in% colData(se)[[m[2]]])
+        stop("value ", m[4], "not in colnames: ",m[2])
+    c(m[2], m[3], m[4])
+})
 ```
 
 ## Load data
@@ -172,7 +185,7 @@ degPCA(assays(se)[["vst"]], colData(se), condition = params$metadata[1])
 # for specific contrasts: degComps(dds, contrasts = list(c(column_name, group1, group2),
 #                                                        c(column_name, group1, group3)))
 
-comparisons = degComps(dds, contrast = params$contrast,
+comparisons = degComps(dds, contrast = contrasts,
                        type = "ashr")
 
 save(comparisons, file = file.path(dataDir, "comparisons.rda"))

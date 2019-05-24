@@ -6,6 +6,7 @@ pkgs <- c(
     "rmarkdown",
     "knitr",
     "devtools",
+    "stringr",
     "pilm-bioinformatics/rmdCore",
     "ashr"
 )
