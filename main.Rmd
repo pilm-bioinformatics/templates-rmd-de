@@ -303,7 +303,8 @@ if (length(sig) > 20){
                           minc = length(sig) * 0.01)
 }else{
     cat("Not enough genes to make a pattern analysis.")
-}```
+}
+```
 
 ## Top genes {.tabset}
 
