@@ -163,7 +163,7 @@ data.frame(samples=colnames(se), num_genes=colSums(assay(se)>0)) %>%
     coord_flip()
 ```
 
-# PCA
+## PCA
 
 Principal component analysis is a technique to reduce the dimensionality of the data to allow visualization in two dimensions [PCA][]. It takes all the gene abundances for the samples and
 creates a series of principal components (PCs) to explain the
@@ -174,7 +174,7 @@ simplicity.
 assays(se)[["vst"]] = assay(rld)
 
 degPCA(assays(se)[["vst"]], colData(se), condition = params$metadata[1]) 
-# +  ggrepel::geom_text_repel(aes(label=names)) if you wish to add sample names
+# +  ggrepel::geom_text_repel(aes(label=Name)) if you wish to add sample names
 ```
 
 
@@ -297,16 +297,27 @@ We defined significance as genes with abs(log2FC) >  `r cat(lfc)` and FDR < `r c
 # choose the significants genes. 
 # In this case the first is used. `sig` should be a character vector with genes.
 sig = significants(comparisons, fc = params$lfc, padj = params$alpha)
-pattern = degPatterns(assays(se)[["vst"]][sig,],
-                      colData(se), time = params$metadata[1])
-```
+if (length(sig) > 20){
+    pattern = degPatterns(assays(se)[["vst"]][sig,],
+                          colData(se), time = params$metadata[1],
+                          minc = length(sig) * 0.01)
+}else{
+    cat("Not enough genes to make a pattern analysis.")
+}```
 
 ## Top genes {.tabset}
 
 ```{r results_tables, results="asis"}
 resTbl = lapply(names(comparisons), function(x){
     cat("### ", x, "\n")
-    p = degPlot(se, genes = significants(comparisons[[x]])[1:15],
+    sign = significants(comparisons[[x]])
+    if (length(sign)==0){
+        cat("\n\n**Not significant genes**\n\n")
+        cat("\n\n")
+        return(NULL)
+    }
+    n = min(15, length(sign))
+    p = degPlot(se, genes = sign[1:n],
             xs = params$metadata[1],
             slot = "vst", log2 = FALSE,
             ann = c("gene_id", "gene_name")) +
@@ -315,8 +326,9 @@ resTbl = lapply(names(comparisons), function(x){
     print(p)
     cat("\n\n")
     res = deg(comparisons[[x]], tidy = "tibble") %>% 
-        left_join(rowData(se) %>% as.data.frame, by = c("gene" = "gene_id")) %>% 
-        left_join(pattern[["df"]], by = c("gene" = "genes"))
+        left_join(rowData(se) %>% as.data.frame, by = c("gene" = "gene_id"))
+    if (exists("pattern"))
+        res = left_join(res, pattern[["df"]], by = c("gene" = "genes"))
    dir.create(file.path(deDir, x), showWarnings = FALSE, recursive = TRUE)
    write_csv(res, file.path(deDir, x, paste0(x, ".csv.gz")))
     res
