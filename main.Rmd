@@ -21,6 +21,7 @@ params:
     metadata: !r c("condition", "type") # first one used in some plots
     alpha: 0.05
     lfc: 0
+    slot: "vst"
     output_dir: "."
     cache_dir: "../cache"
     cache_on: FALSE
@@ -173,7 +174,7 @@ simplicity.
 ```{r general-pca, fig.width=6, fig.height=6}
 assays(se)[["vst"]] = assay(rld)
 
-degPCA(assays(se)[["vst"]], colData(se), condition = params$metadata[1]) 
+degPCA(assays(se)[[params$slot]], colData(se), condition = params$metadata[1]) 
 # +  ggrepel::geom_text_repel(aes(label=Name)) if you wish to add sample names
 ```
 
@@ -256,7 +257,7 @@ for (x in names(comparisons)){
     if (length(s) < 2){
         cat("Less than two genes, no possible to plot")
     }else{
-        p=pheatmap(assays(se)[["vst"]][s,], scale = "row",
+        p=pheatmap(assays(se)[[params$slot]][s,], scale = "row",
                  annotation_col = as.data.frame(colData(se)[,params$metadata, drop=F]),
                  show_rownames = FALSE, show_colnames = FALSE, clustering_method = "ward.D2",
                  clustering_distance_cols = "correlation")
@@ -280,16 +281,17 @@ lapply(names(comparisons), function(x){
     if (length(s) < 2){
         cat("Less than two genes, no possible to plot")
     }else{
-        degPCA(assays(se)[["vst"]][s,],
+        degPCA(assays(se)[[params$slot]][s,],
                colData(se), condition = params$metadata[1]) %>% print
-        cat("\n\n")
+        
     }
+    cat("\n\n")
 }) %>%  invisible()
 ```
 
 ## Gene Expression Patterns
 
-In general, it is useful to cluster the significant genes together in similar patterns across samples. `degPatterns` uses standard expression correlation technique to generate a similarity matrix that can be clustered hierarchically and then split into groups of genes that follow similar expression patterns [degPtterns][].
+In general, it is useful to cluster the significant genes together in similar patterns across samples. `degPatterns` uses standard expression correlation technique to generate a similarity matrix that can be clustered hierarchically and then split into groups of genes that follow similar expression patterns [degPatterns][].
 
 We defined significance as genes with abs(log2FC) >  `r cat(lfc)` and FDR < `r cat(alpha)`.
 
@@ -298,7 +300,8 @@ We defined significance as genes with abs(log2FC) >  `r cat(lfc)` and FDR < `r c
 # In this case the first is used. `sig` should be a character vector with genes.
 sig = significants(comparisons, fc = params$lfc, padj = params$alpha)
 if (length(sig) > 20){
-    pattern = degPatterns(assays(se)[["vst"]][sig,],
+    colData(se)[[params$metadata[1]]] = as.factor(colData(se)[[params$metadata[1]]])
+    pattern = degPatterns(assays(se)[[params$slot]][sig,],
                           colData(se), time = params$metadata[1],
                           minc = length(sig) * 0.01)
 }else{
@@ -320,7 +323,7 @@ resTbl = lapply(names(comparisons), function(x){
     n = min(15, length(sign))
     p = degPlot(se, genes = sign[1:n],
             xs = params$metadata[1],
-            slot = "vst", log2 = FALSE,
+            slot = params$slot, log2 = FALSE,
             ann = c("gene_id", "gene_name")) +
         geom_boxplot(alpha = 0.3) +
         theme(axis.text.x = element_text(angle=45, hjust = 0.5, vjust = 0.5))
