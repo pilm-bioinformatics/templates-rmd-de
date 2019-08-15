@@ -3,11 +3,11 @@ pkgs <- c(
     "DEGreport",
     "pheatmap",
     "tidyverse",
+    "RColorBrewer",
     "rmarkdown",
     "knitr",
     "devtools",
     "stringr",
-    "pilm-bioinformatics/rmdCore",
     "ashr"
 )
 
@@ -18,6 +18,9 @@ fnd <- pkgs %in% ap
 pkgs_to_install <- pkgs
 
 ok <- BiocManager::install(pkgs_to_install, update=FALSE, ask=FALSE) %in% rownames(installed.packages())
+
+BiocManager::install("pilm-bioinformatics/rmdCore", update=FALSE, ask=FALSE)
+
 
 if (!all(fnd))
     message("Packages not found in a valid repository (skipped):\n  ",

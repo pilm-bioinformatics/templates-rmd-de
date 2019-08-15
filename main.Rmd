@@ -264,7 +264,8 @@ for (x in names(comparisons)){
         p=pheatmap(assays(se)[[params$slot]][s,], scale = "row",
                  annotation_col = as.data.frame(colData(se)[,params$metadata, drop=F]),
                  show_rownames = FALSE, show_colnames = FALSE, clustering_method = "ward.D2",
-                 clustering_distance_cols = "correlation")
+                 clustering_distance_cols = "correlation",
+                 color = RColorBrewer::brewer.pal(10,"RdBu"))
         print(p)
     }
     cat("\n\n")
